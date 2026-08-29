@@ -1,0 +1,123 @@
+/** CSS Modules for the file upload rail component. */
+
+.root {
+  position: relative;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.rail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  padding: 4px 0;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  position: relative;
+  flex: 0 0 80px;
+  width: 80px;
+  height: 80px;
+  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
+  border-radius: 12px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: default;
+}
+
+.cardIcon {
+  width: 32px;
+  height: 32px;
+  color: var(--dsw-alias-label-secondary);
+  flex-shrink: 0;
+}
+
+.cardName {
+  font-size: 10px;
+  color: var(--dsw-alias-label-secondary);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 76px;
+  margin-top: 4px;
+  padding: 0 2px;
+}
+
+.cardProgress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--dsw-alias-border-l2-darkmode-thin);
+  border-radius: 0 0 11px 11px;
+  overflow: hidden;
+}
+
+.cardProgressBar {
+  height: 100%;
+  background: var(--dsw-alias-accent);
+  transition: width 0.2s ease;
+}
+
+.cardError {
+  color: var(--dsw-alias-status-error);
+  font-size: 9px;
+  text-align: center;
+  padding: 0 4px;
+}
+
+.remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--dsw-alias-button-contrast-fill);
+  color: var(--dsw-alias-label-primary-inverted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.card:hover .remove,
+.remove:focus-visible {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .remove {
+    opacity: 1;
+  }
+}
+
+/* Uploaded state */
+.card--uploaded {
+  border-color: var(--dsw-alias-status-success);
+}
+
+.card--uploaded .cardIcon {
+  color: var(--dsw-alias-status-success);
+}
+
+/* Error state */
+.card--error {
+  border-color: var(--dsw-alias-status-error);
+}
