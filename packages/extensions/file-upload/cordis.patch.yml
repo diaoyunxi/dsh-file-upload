@@ -1,0 +1,9 @@
+# @deepseek-ai/dsh-file-upload — HTTP file upload Cordis plugin bundle
+#
+# Registers the file-upload plugin into the Cordis loader tree.
+# This bundle provides an HTTP endpoint (POST /api/upload) for arbitrary
+# file uploads, saving files to /tmp and notifying AI via session events.
+
+- insert:
+    - id: file-upload
+      name: '@deepseek-ai/dsh-file-upload'
