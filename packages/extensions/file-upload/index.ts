@@ -142,8 +142,18 @@ export function saveUploadedFile(ctx: Context, file: { name: string; type: strin
   }
 
   const fileId = randomUUID()
-  const extension = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
-  const savedPath = join(uploadDir, `${fileId}${extension}`)
+  // 安全处理文件名：移除路径分隔符和危险字符，防止路径遍历攻击
+  const sanitizedName = file.name.replace(/[/\\:*?"<>|]/g, '_').replace(/^\.\.+/, '_')
+  const extension = sanitizedName.includes('.') ? sanitizedName.slice(sanitizedName.lastIndexOf('.')) : ''
+  // 验证扩展名：只允许字母数字，长度限制，拒绝危险扩展
+  const dangerousExtensions = new Set(['.exe', '.bat', '.cmd', '.sh', '.bash', '.ps1', '.vbs', '.js', '.jar', '.app', '.dmg', '.msi'])
+  if (dangerousExtensions.has(extension.toLowerCase())) {
+    ctx.logger.warn(`拒绝危险文件类型: ${file.name} (扩展名: ${extension})`)
+    throw new Error(`File type not allowed: ${extension}`)
+  }
+  // 限制扩展名长度和字符集
+  const safeExtension = extension.replace(/[^a-zA-Z0-9.]/g, '').slice(0, 10)
+  const savedPath = join(uploadDir, `${fileId}${safeExtension}`)
 
   // 写入文件
   writeFileSync(savedPath, file.data)
