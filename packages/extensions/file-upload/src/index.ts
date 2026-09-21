@@ -59,12 +59,23 @@ export interface UploadedFile {
  */
 function parseMultipartForm(
   req: IncomingMessage,
+  maxBodySize: number = MAX_FILE_SIZE,
 ): Promise<{ fields: Record<string, string>; files: Array<{ field: string; name: string; type: string; data: Buffer }> }> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
+    let totalSize = 0
+    let aborted = false
     let boundary: string | undefined
 
     req.on('data', (chunk: Buffer) => {
+      // 在数据累积阶段校验总大小，防止超大请求耗尽内存 (CWE-770)
+      totalSize += chunk.length
+      if (totalSize > maxBodySize) {
+        aborted = true
+        req.destroy()
+        reject(new Error(`Request body too large: exceeded ${maxBodySize} bytes limit`))
+        return
+      }
       chunks.push(chunk)
     })
 
@@ -241,7 +252,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       }
 
       try {
-        const { files } = await parseMultipartForm(req)
+        const { files } = await parseMultipartForm(req, maxFileSize)
 
         if (files.length === 0) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
