@@ -170,6 +170,8 @@ export function saveUploadedFile(ctx: Context, file: { name: string; type: strin
  * @returns 文件列表
  */
 export function listUploadedFiles(uploadDir: string, limit: number = 20): UploadedFile[] {
+  // 安全校验：limit 必须为正整数，上限 100，防止 DoS
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 100) : 20
   if (!existsSync(uploadDir)) {
     return []
   }
@@ -189,7 +191,7 @@ export function listUploadedFiles(uploadDir: string, limit: number = 20): Upload
       }
     })
     .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
-    .slice(0, limit)
+    .slice(0, safeLimit)
 
   return files
 }
@@ -227,7 +229,8 @@ export function apply(ctx: Context, config: Config = {}): void {
 
       if (req.method === 'GET') {
         // 列出已上传文件
-        const limit = parseInt(req.url?.split('?')[1]?.split('limit=')[1] || '20')
+        const rawLimit = parseInt(new URL(req.url ?? '/', `http://${req.headers.host}`).searchParams.get('limit') || '20')
+        const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20
         const files = listUploadedFiles(uploadDir, limit)
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ files }))
@@ -308,7 +311,8 @@ export function apply(ctx: Context, config: Config = {}): void {
 
       try {
         const url = new URL(req.url ?? '/', `http://${req.headers.host}`)
-        const limit = parseInt(url.searchParams.get('limit') || '20')
+        const rawLimit = parseInt(url.searchParams.get('limit') || '20')
+        const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20
         const files = listUploadedFiles(uploadDir, limit)
 
         res.writeHead(200, { 'Content-Type': 'application/json' })
