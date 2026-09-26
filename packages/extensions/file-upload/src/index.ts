@@ -1,3 +1,6 @@
+/** Maximum number of files per upload batch */
+const MAX_UPLOAD_FILES = 50;
+
 /**
  * @deepseek-ai/dsh-file-upload — 文件上传插件
  *
