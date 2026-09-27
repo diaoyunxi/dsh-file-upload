@@ -26,6 +26,10 @@ DeepSeek Harness 文件上传插件包，包含后端 HTTP 上传服务和前端
 
 ## 安装步骤
 
+> **注意**: 步骤 2-5 中引用的文件路径均相对于 **宿主项目**（deepseek-harness）根目录，而非本插件仓库。
+> 这些文件（`slots.ts`、`apply.ts`、`cordis.patch.yml`、`package.json`）属于宿主项目的 `ui-conversation` 和 `web-app` 包，
+> 本仓库仅包含插件代码，不包含宿主项目源码。
+
 ### 1. 复制插件到 deepseek-harness
 
 ```bash
@@ -38,7 +42,7 @@ cp -r packages/client/ui-file-upload /path/to/deepseek-harness/packages/client/
 
 ### 2. 修改 slots.ts
 
-文件: `packages/client/ui-conversation/src/client/contract/slots.ts`
+文件: `packages/client/ui-conversation/src/client/contract/slots.ts`（位于宿主项目中）
 
 在 `conversation.input.attachments` 之后添加:
 
