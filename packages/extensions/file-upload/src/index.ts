@@ -59,18 +59,21 @@ export interface UploadedFile {
  */
 function parseMultipartForm(
   req: IncomingMessage,
+  // 默认上限为单个文件大小上限的 3 倍（base64 编码后膨胀约 33%，加上
+  // multipart 边界/头部开销），避免合法的大文件上传被误拒
+  maxBodySize: number = MAX_FILE_SIZE * 3,
 ): Promise<{ fields: Record<string, string>; files: Array<{ field: string; name: string; type: string; data: Buffer }> }> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
     let totalSize = 0
-    const BODY_LIMIT = 200 * 1024 * 1024 // 200MB hard limit to prevent OOM
     let boundary: string | undefined
 
     req.on('data', (chunk: Buffer) => {
+      // 在数据累积阶段校验总大小，防止超大请求耗尽内存 (CWE-770)
       totalSize += chunk.length
-      if (totalSize > BODY_LIMIT) {
+      if (totalSize > maxBodySize) {
         req.destroy()
-        reject(new Error('Request body exceeds size limit'))
+        reject(new Error(`Request body too large: exceeded ${maxBodySize} bytes limit`))
         return
       }
       chunks.push(chunk)
@@ -269,7 +272,7 @@ export function apply(ctx: Context, config: Config = {}): void {
       }
 
       try {
-        const { files } = await parseMultipartForm(req)
+        const { files } = await parseMultipartForm(req, maxFileSize)
 
         if (files.length === 0) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
