@@ -62,9 +62,17 @@ function parseMultipartForm(
 ): Promise<{ fields: Record<string, string>; files: Array<{ field: string; name: string; type: string; data: Buffer }> }> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
+    let totalSize = 0
+    const BODY_LIMIT = 200 * 1024 * 1024 // 200MB hard limit to prevent OOM
     let boundary: string | undefined
 
     req.on('data', (chunk: Buffer) => {
+      totalSize += chunk.length
+      if (totalSize > BODY_LIMIT) {
+        req.destroy()
+        reject(new Error('Request body exceeds size limit'))
+        return
+      }
       chunks.push(chunk)
     })
 
@@ -142,7 +150,18 @@ export function saveUploadedFile(ctx: Context, file: { name: string; type: strin
   }
 
   const fileId = randomUUID()
-  const extension = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
+  // Validate extension: only allow safe extensions, reject executables and scripts
+  const BLOCKED_EXTENSIONS = new Set([
+    '.exe', '.bat', '.cmd', '.com', '.cpl', '.dll', '.hta', '.inf',
+    '.ins', '.isp', '.jse', '.lnk', '.msc', '.msi', '.msp', '.mst',
+    '.pif', '.ps1', '.ps2', '.reg', '.rgs', '.scr', '.sct', '.sh',
+    '.shb', '.shs', '.vb', '.vbe', '.vbs', '.ws', '.wsc', '.wsf',
+    '.wsh',
+  ])
+  const extension = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase() : ''
+  if (BLOCKED_EXTENSIONS.has(extension)) {
+    throw new Error(`Blocked file type: ${extension}`)
+  }
   const savedPath = join(uploadDir, `${fileId}${extension}`)
 
   // 写入文件
@@ -237,6 +256,15 @@ export function apply(ctx: Context, config: Config = {}): void {
       if (req.method !== 'POST') {
         res.writeHead(405, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: 'Method not allowed' }))
+        return
+      }
+
+      // Pre-check Content-Length to reject oversized payloads early,
+      // preventing OOM from buffering the entire body before per-file size check.
+      const contentLength = parseInt(req.headers['content-length'] || '0', 10)
+      if (contentLength > maxFileSize * 2) {
+        res.writeHead(413, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Request body too large' }))
         return
       }
 
