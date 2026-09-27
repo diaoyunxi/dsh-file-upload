@@ -108,12 +108,12 @@ function parseMultipartForm(
           if (filenameMatch) {
             const filename = filenameMatch[1]
             const mimeType = headers.match(/Content-Type:\s*([^\r\n]+)/i)?.[1]?.trim() || 'application/octet-stream'
-            // 移除末尾的 --\r\n
-            const fileData = content.slice(0, -4)
+            // 移除末尾的 \r\n（boundary 已被 split 消费，part 末尾仅余 2 字节 CRLF）
+            const fileData = content.slice(0, -2)
             files.push({ field: fieldName, name: filename, type: mimeType, data: fileData })
           } else {
             // 普通表单字段
-            const value = content.slice(0, -4).toString()
+            const value = content.slice(0, -2).toString()
             fields[fieldName] = value
           }
         }
