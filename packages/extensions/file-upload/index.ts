@@ -142,7 +142,10 @@ export function saveUploadedFile(ctx: Context, file: { name: string; type: strin
   }
 
   const fileId = randomUUID()
-  const extension = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
+  // 安全提取文件扩展名：仅保留最后一个 dot 之后的部分，并校验字符白名单，
+  // 防止恶意文件名（如 "../../etc/passwd"）通过扩展名拼接实现路径穿越 (CWE-22)。
+  const rawExt = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.') + 1) : ''
+  const extension = /^[a-zA-Z0-9]{1,10}$/.test(rawExt) ? `.${rawExt}` : ''
   const savedPath = join(uploadDir, `${fileId}${extension}`)
 
   // 写入文件
