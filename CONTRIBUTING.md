@@ -1,41 +1,66 @@
-# 贡献指南
+# Contributing
 
-感谢你对 dsh-file-upload 项目的关注！
+Thank you for considering contributing to this project!
 
-## 项目结构
+## How to Contribute
+
+### Reporting Bugs
+
+1. Check existing [issues](../../issues) to avoid duplicates
+2. Use the issue template and provide:
+   - Clear description of the bug
+   - Steps to reproduce
+   - Expected vs actual behavior
+   - Environment details (OS, language version, etc.)
+
+### Suggesting Features
+
+1. Open a feature request issue
+2. Describe the use case and motivation
+3. Propose a solution if you have one in mind
+
+### Submitting Pull Requests
+
+1. **Fork** the repository
+2. **Create a branch** from `main` (or `master`): `git checkout -b fix/your-fix`
+3. **Make your changes** with clear, focused commits
+4. **Test** your changes thoroughly
+5. **Submit a PR** with a descriptive title and body
+
+### Code Style
+
+- Follow the existing code style and conventions
+- Write clear commit messages
+- Add tests for new features when possible
+- Update documentation if your changes affect the public API
+
+### Commit Message Format
 
 ```
-packages/
-├── client/ui-file-upload/   # Cordis 客户端 UI 组件
-│   └── src/                 # React/TSX 组件
-└── extensions/file-upload/  # Cordis 插件扩展
-    └── src/                 # TypeScript 插件逻辑
+type(scope): description
+
+[optional body]
 ```
 
-## 开发环境
+Types: `fix`, `feat`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`
 
-- **运行时：** Node.js 18+
-- **包管理：** npm/yarn
-- **语言：** TypeScript 5+
+Examples:
+- `fix(auth): prevent timing attack in token comparison`
+- `feat(api): add rate limiting middleware`
+- `docs: update installation instructions`
 
-## 安全注意事项
+## Development Setup
 
-本项目处理文件上传功能，修改时请特别注意：
+1. Clone your fork: `git clone https://github.com/YOUR_USERNAME/REPO_NAME.git`
+2. Install dependencies (see README for instructions)
+3. Create a branch and start coding!
 
-- 文件扩展名白名单校验（防止路径穿越 CWE-22）
-- 请求体大小限制（防止 DoS CWE-770）
-- multipart 解析的安全性
-- 上传文件的存储路径隔离
+## Code Review
 
-## 代码规范
+- All PRs require review before merging
+- Address review comments promptly
+- Be respectful and constructive in discussions
 
-- TypeScript 严格模式
-- 组件遵循函数式组件 + Hooks 模式
-- 提交前运行 `npm run build` 确保编译通过
+## License
 
-## 提交 Pull Request
-
-1. Fork 本仓库并创建功能分支
-2. 确保 TypeScript 编译通过
-3. 如涉及安全相关修改，请在 PR 描述中说明威胁模型
-4. 遵循 Conventional Commits 规范提交
+By contributing, you agree that your contributions will be licensed under the same license as the project.
