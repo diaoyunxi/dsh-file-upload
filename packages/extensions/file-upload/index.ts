@@ -108,12 +108,12 @@ function parseMultipartForm(
           if (filenameMatch) {
             const filename = filenameMatch[1]
             const mimeType = headers.match(/Content-Type:\s*([^\r\n]+)/i)?.[1]?.trim() || 'application/octet-stream'
-            // 移除末尾的 --\r\n
-            const fileData = content.slice(0, -4)
+            // 移除末尾的 \r\n（boundary 已被 split 消费，part 末尾仅余 2 字节 CRLF）
+            const fileData = content.slice(0, -2)
             files.push({ field: fieldName, name: filename, type: mimeType, data: fileData })
           } else {
             // 普通表单字段
-            const value = content.slice(0, -4).toString()
+            const value = content.slice(0, -2).toString()
             fields[fieldName] = value
           }
         }
@@ -142,7 +142,10 @@ export function saveUploadedFile(ctx: Context, file: { name: string; type: strin
   }
 
   const fileId = randomUUID()
-  const extension = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : ''
+  // 安全提取文件扩展名：仅保留最后一个 dot 之后的部分，并校验字符白名单，
+  // 防止恶意文件名（如 "../../etc/passwd"）通过扩展名拼接实现路径穿越 (CWE-22)。
+  const rawExt = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.') + 1) : ''
+  const extension = /^[a-zA-Z0-9]{1,10}$/.test(rawExt) ? `.${rawExt}` : ''
   const savedPath = join(uploadDir, `${fileId}${extension}`)
 
   // 写入文件
