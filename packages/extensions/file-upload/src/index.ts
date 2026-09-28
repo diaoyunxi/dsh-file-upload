@@ -14,6 +14,8 @@ import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'nod
 import { join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
+import { MAX_UPLOAD_FILES } from './limits'
+
 // Type-only imports to trigger declaration merging on Context
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-agent-loop'
@@ -277,6 +279,15 @@ export function apply(ctx: Context, config: Config = {}): void {
         if (files.length === 0) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'No files uploaded' }))
+          return
+        }
+
+        // Enforce the per-request file count limit declared in limits.ts.
+        // Without this check, MAX_UPLOAD_FILES was dead code and a single
+        // multipart request could carry an unbounded number of parts.
+        if (files.length > MAX_UPLOAD_FILES) {
+          res.writeHead(413, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: `Too many files: at most ${MAX_UPLOAD_FILES} files per upload (got ${files.length})` }))
           return
         }
 
