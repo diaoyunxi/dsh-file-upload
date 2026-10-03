@@ -1,5 +1,8 @@
 # dsh-file-upload
 
+> **注意：** 本文档中引用的 `src/`、`api/`、`client/` 目录及 `package.json` 文件属于宿主项目（host project），而非本插件仓库。本仓库仅包含 DSH 插件本身的代码。
+
+
 DeepSeek Harness 文件上传插件包，包含后端 HTTP 上传服务和前端拖拽上传 UI。
 
 ## 插件列表
