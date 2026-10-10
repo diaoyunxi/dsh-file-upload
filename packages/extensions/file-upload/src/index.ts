@@ -10,7 +10,7 @@
 import { Context } from '@deepseek-ai/cordis'
 import type { WebServer } from '@deepseek-ai/dsh-host-webserver'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
@@ -171,6 +171,16 @@ export function saveUploadedFile(ctx: Context, file: { name: string; type: strin
   writeFileSync(savedPath, file.data)
 
   const stats = statSync(savedPath)
+  const uploadedAt = new Date().toISOString()
+
+  // 原始文件名与 MIME 类型只存在于内存中，落盘时文件名是 UUID，
+  // 列表接口从磁盘无法恢复。这里写一份 sidecar 元数据，供 listUploadedFiles 读回。
+  const metaPath = join(uploadDir, `${fileId}.json`)
+  writeFileSync(metaPath, JSON.stringify({
+    originalName: file.name,
+    mimeType: file.type,
+    uploadedAt,
+  }))
 
   const uploadedFile: UploadedFile = {
     id: fileId,
@@ -178,7 +188,7 @@ export function saveUploadedFile(ctx: Context, file: { name: string; type: strin
     path: savedPath,
     size: stats.size,
     mimeType: file.type,
-    uploadedAt: new Date().toISOString(),
+    uploadedAt,
   }
 
   ctx.logger.info(`文件已上传: ${file.name} -> ${savedPath} (${stats.size} bytes)`)
@@ -198,15 +208,39 @@ export function listUploadedFiles(uploadDir: string, limit: number = 20): Upload
 
   const entries = readdirSync(uploadDir, { withFileTypes: true })
   const files: UploadedFile[] = entries
-    .filter(d => d.isFile())
+    .filter(d => d.isFile() && !d.name.endsWith('.json'))
     .map((d) => {
       const stats = statSync(join(uploadDir, d.name))
+      // 落盘文件名是 UUID+扩展，从中取出 fileId 以定位 sidecar 元数据。
+      const dotIdx = d.name.lastIndexOf('.')
+      const fileId = dotIdx > 0 ? d.name.slice(0, dotIdx) : d.name
+
+      let originalName = d.name
+      let mimeType = 'application/octet-stream'
+      const metaPath = join(uploadDir, `${fileId}.json`)
+      if (existsSync(metaPath)) {
+        try {
+          const meta = JSON.parse(readFileSync(metaPath, 'utf-8')) as {
+            originalName?: unknown
+            mimeType?: unknown
+          }
+          if (typeof meta.originalName === 'string' && meta.originalName) {
+            originalName = meta.originalName
+          }
+          if (typeof meta.mimeType === 'string' && meta.mimeType) {
+            mimeType = meta.mimeType
+          }
+        } catch {
+          // sidecar 损坏时回退到文件名，不阻断列表。
+        }
+      }
+
       return {
-        id: d.name,
-        originalName: d.name,
+        id: fileId,
+        originalName,
         path: join(uploadDir, d.name),
         size: stats.size,
-        mimeType: 'application/octet-stream',
+        mimeType,
         uploadedAt: stats.mtime.toISOString(),
       }
     })
