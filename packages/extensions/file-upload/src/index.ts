@@ -25,6 +25,48 @@ const DEFAULT_UPLOAD_DIR = '/tmp/dsh-uploads'
 /** 最大文件大小（100MB） */
 const MAX_FILE_SIZE = 100 * 1024 * 1024
 
+/** 文件列表查询的最大 limit 值，防止滥用导致 I/O 耗尽 (CWE-770) */
+const MAX_LIST_LIMIT = 100
+
+/**
+ * 获取允许的 CORS 来源列表
+ * 通过环境变量 UPLOAD_CORS_ORIGINS 配置，逗号分隔
+ * 默认仅允许同源（空字符串表示不设置通配符）
+ */
+function getAllowedOrigins(): string[] {
+  const origins = process.env.UPLOAD_CORS_ORIGINS
+  if (!origins) return []
+  return origins.split(',').map(s => s.trim()).filter(Boolean)
+}
+
+/**
+ * 设置 CORS 响应头
+ * 仅允许配置中指定的来源访问，默认拒绝跨域请求 (CWE-942)
+ * @param req - HTTP 请求对象
+ * @param res - HTTP 响应对象
+ * @param methods - 允许的 HTTP 方法
+ */
+function setCorsHeaders(
+  req: IncomingMessage,
+  res: ServerResponse,
+  methods: string,
+): void {
+  const allowedOrigins = getAllowedOrigins()
+  const origin = req.headers.origin || ''
+
+  if (allowedOrigins.length === 0) {
+    // 未配置允许来源时，仅允许同源请求（不设置 Access-Control-Allow-Origin）
+    // 如果显式配置了 '*' 则允许所有来源
+  } else if (allowedOrigins.includes('*')) {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+  } else if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+    res.setHeader('Vary', 'Origin')
+  }
+  res.setHeader('Access-Control-Allow-Methods', methods)
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+}
+
 export const name = 'file-upload'
 export const inject = ['webServer']
 
@@ -270,10 +312,8 @@ export function apply(ctx: Context, config: Config = {}): void {
     kind: 'exact',
     path: '/api/upload',
     handler: async (req: IncomingMessage, res: ServerResponse) => {
-      // 设置 CORS 头
-      res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS, GET')
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+      // 设置 CORS 头（仅允许配置中指定的来源，防止任意网站跨域上传）
+      setCorsHeaders(req, res, 'POST, OPTIONS, GET')
 
       if (req.method === 'OPTIONS') {
         res.writeHead(200)
@@ -282,8 +322,9 @@ export function apply(ctx: Context, config: Config = {}): void {
       }
 
       if (req.method === 'GET') {
-        // 列出已上传文件
-        const limit = parseInt(req.url?.split('?')[1]?.split('limit=')[1] || '20')
+        // 列出已上传文件（对 limit 参数进行范围校验，防止滥用）
+        const rawLimit = parseInt(req.url?.split('?')[1]?.split('limit=')[1] || '20', 10)
+        const limit = Math.max(1, Math.min(rawLimit || 20, MAX_LIST_LIMIT))
         const files = listUploadedFiles(uploadDir, limit)
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ files }))
@@ -355,9 +396,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     kind: 'exact',
     path: '/api/upload/list',
     handler: async (req: IncomingMessage, res: ServerResponse) => {
-      res.setHeader('Access-Control-Allow-Origin', '*')
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+      setCorsHeaders(req, res, 'GET, OPTIONS')
 
       if (req.method === 'OPTIONS') {
         res.writeHead(200)
@@ -373,7 +412,9 @@ export function apply(ctx: Context, config: Config = {}): void {
 
       try {
         const url = new URL(req.url ?? '/', `http://${req.headers.host}`)
-        const limit = parseInt(url.searchParams.get('limit') || '20')
+        // 对 limit 参数进行范围校验，防止负数或极大值导致 I/O 耗尽 (CWE-770)
+        const rawLimit = parseInt(url.searchParams.get('limit') || '20', 10)
+        const limit = Math.max(1, Math.min(rawLimit || 20, MAX_LIST_LIMIT))
         const files = listUploadedFiles(uploadDir, limit)
 
         res.writeHead(200, { 'Content-Type': 'application/json' })
