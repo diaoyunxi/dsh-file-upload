@@ -3,7 +3,10 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib/types",
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "strict": true
   },
   "include": [
     "src"
