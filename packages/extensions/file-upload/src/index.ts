@@ -199,11 +199,16 @@ export function saveUploadedFile(ctx: Context, file: { name: string; type: strin
   const fileId = randomUUID()
   // Validate extension: only allow safe extensions, reject executables and scripts
   const BLOCKED_EXTENSIONS = new Set([
+    // OS-level executables
     '.exe', '.bat', '.cmd', '.com', '.cpl', '.dll', '.hta', '.inf',
     '.ins', '.isp', '.jse', '.lnk', '.msc', '.msi', '.msp', '.mst',
     '.pif', '.ps1', '.ps2', '.reg', '.rgs', '.scr', '.sct', '.sh',
     '.shb', '.shs', '.vb', '.vbe', '.vbs', '.ws', '.wsc', '.wsf',
     '.wsh',
+    // Web-executable files (CWE-434: Unrestricted Upload)
+    '.php', '.phtml', '.php3', '.php4', '.php5', '.phps',
+    '.jsp', '.jspx', '.asp', '.aspx', '.cgi', '.pl', '.py',
+    '.shtml', '.htaccess', '.htpasswd',
   ])
   const extension = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase() : ''
   if (BLOCKED_EXTENSIONS.has(extension)) {
