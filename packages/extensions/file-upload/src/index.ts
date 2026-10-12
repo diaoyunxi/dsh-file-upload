@@ -143,7 +143,12 @@ function parseMultipartForm(
         const parts = body.split(boundaryBuffer)
 
         for (const part of parts) {
-          if (part.length === 0 || part.toString().trim() === '--') continue
+          if (part.length === 0) continue
+          // 收尾边界 part 形如 "--\r\n"（几字节），文件 part 可能上百 MB。
+          // 之前无条件 part.toString() 会把整个文件内容转成 UTF-8 字符串，
+          // 仅为了和 "--" 比较，造成 100MB+ 的临时字符串分配。
+          // 只对小 part 做字符串比较。
+          if (part.length < 16 && part.toString().trim() === '--') continue
 
           // 解析头部
           const headerEnd = part.indexOf('\r\n\r\n')
